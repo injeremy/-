@@ -1,0 +1,6 @@
+{
+  "name": "초등 영어 발음 친구 (Kids English TTS)",
+  "description": "초등학생을 위한 맞춤형 영어 TTS 발음 학습기 - 속도 조절, 단어별 듣기, 파닉스 분해 및 따라읽기 지원",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
