@@ -7,31 +7,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { TtsControls } from './components/TtsControls';
 import { InteractiveReader } from './components/InteractiveReader';
-import { CurriculumLibrary } from './components/CurriculumLibrary';
-import { SpeakingPracticeModal } from './components/SpeakingPracticeModal';
-import { AIAssistantModal } from './components/AIAssistantModal';
-import { SavedWordsDrawer } from './components/SavedWordsDrawer';
-import { GuideModal } from './components/GuideModal';
 import { globalSpeechSynth } from './utils/speechSynthesisManager';
-import { SpeechVoiceInfo, SentenceItem, SavedVocabularyItem } from './types';
+import { SpeechVoiceInfo } from './types';
 import { playChimeSound } from './utils/audioUtils';
-import { Sparkles, Heart, Award } from 'lucide-react';
-
-const INITIAL_TEXT = 'Hello, my friend! Look at the cute puppy playing with a ball in the sunny park.';
-const INITIAL_KOREAN = '안녕, 내 친구야! 화창한 공원에서 공을 가지고 노는 귀여운 강아지를 보세요.';
 
 export default function App() {
-  // TTS State
   const [text, setText] = useState<string>(() => {
-    return localStorage.getItem('kids_tts_text') || INITIAL_TEXT;
-  });
-  const [korean, setKorean] = useState<string>(() => {
-    return localStorage.getItem('kids_tts_korean') || INITIAL_KOREAN;
+    return localStorage.getItem('kids_tts_text') || '';
   });
 
-  const [rate, setRate] = useState<number>(0.85); // Kid-friendly default pace
-  const [pitch, setPitch] = useState<number>(1.0);
-  const [volume, setVolume] = useState<number>(1.0);
+  const [rate, setRate] = useState<number>(0.9); // Default pace: 0.9x
+  const [pitch] = useState<number>(1.0); // Fixed pitch to avoid voice distortion
+  const [volume] = useState<number>(1.0);
   const [voices, setVoices] = useState<SpeechVoiceInfo[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
 
@@ -44,27 +31,6 @@ export default function App() {
   // Display & UI Preferences
   const [fontSizeLevel, setFontSizeLevel] = useState<number>(1); // 0: Normal, 1: Large, 2: Extra Large
   const [showSyllables, setShowSyllables] = useState<boolean>(false);
-  const [showKorean, setShowKorean] = useState<boolean>(true);
-
-  // Saved Vocabulary
-  const [savedWords, setSavedWords] = useState<SavedVocabularyItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('kids_tts_saved_words');
-      return saved ? JSON.parse(saved) : [
-        { id: '1', english: 'puppy', korean: '강아지', dateAdded: '2026-08-30' },
-        { id: '2', english: 'sunny', korean: '화창한, 맑은', dateAdded: '2026-08-30' },
-        { id: '3', english: 'playing', korean: '놀고 있는', dateAdded: '2026-08-30' },
-      ];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  // Modals
-  const [isSpeakingPracticeOpen, setIsSpeakingPracticeOpen] = useState<boolean>(false);
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState<boolean>(false);
-  const [isSavedDrawerOpen, setIsSavedDrawerOpen] = useState<boolean>(false);
-  const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
 
   // Ref to track repeat loop safely in asynchronous events
   const repeatCountRef = useRef(repeatCount);
@@ -76,7 +42,6 @@ export default function App() {
     const handleVoices = (loadedVoices: SpeechVoiceInfo[]) => {
       setVoices(loadedVoices);
       if (loadedVoices.length > 0 && !selectedVoice) {
-        // Pick best US voice or first
         const usVoice = loadedVoices.find((v) => v.accent === 'US') || loadedVoices[0];
         setSelectedVoice(usVoice.name);
       }
@@ -93,14 +58,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('kids_tts_text', text);
   }, [text]);
-
-  useEffect(() => {
-    localStorage.setItem('kids_tts_korean', korean);
-  }, [korean]);
-
-  useEffect(() => {
-    localStorage.setItem('kids_tts_saved_words', JSON.stringify(savedWords));
-  }, [savedWords]);
 
   // Main Play handler
   const handlePlay = (customRate?: number) => {
@@ -133,7 +90,7 @@ export default function App() {
             setCurrentRepeat(currentRepeatRef.current);
             setTimeout(() => {
               runUtterance();
-            }, 600); // 0.6s breathing room between repeats
+            }, 600); // 0.6s pause between repeats
           } else {
             setIsPlaying(false);
             setIsPaused(false);
@@ -174,7 +131,7 @@ export default function App() {
   const handleReplaySlow = () => {
     handleStop();
     setTimeout(() => {
-      handlePlay(0.6); // 0.6x slow speed for easy listening
+      handlePlay(0.6); // 0.6x slow speed for clear comprehension
     }, 150);
   };
 
@@ -189,100 +146,33 @@ export default function App() {
     });
   };
 
-  // Save word to vocabulary
-  const handleSaveWord = (word: string, meaning: string) => {
-    const clean = word.toLowerCase().trim();
-    if (savedWords.some((item) => item.english.toLowerCase() === clean)) {
-      // Toggle remove
-      setSavedWords((prev) => prev.filter((item) => item.english.toLowerCase() !== clean));
-    } else {
-      const newItem: SavedVocabularyItem = {
-        id: `word-${Date.now()}`,
-        english: word,
-        korean: meaning || '영어 단어',
-        dateAdded: new Date().toISOString().slice(0, 10),
-      };
-      setSavedWords((prev) => [newItem, ...prev]);
-    }
-  };
-
-  const handleRemoveWord = (id: string) => {
-    setSavedWords((prev) => prev.filter((w) => w.id !== id));
-  };
-
-  // Curriculum sentence selection
-  const handleSelectSentence = (sentence: SentenceItem, autoPlay: boolean = false) => {
-    handleStop();
-    setText(sentence.english);
-    setKorean(sentence.korean);
-    if (autoPlay) {
-      setTimeout(() => {
-        globalSpeechSynth.speak({
-          text: sentence.english,
-          rate,
-          pitch,
-          volume,
-          voiceName: selectedVoice,
-          onStart: () => {
-            setIsPlaying(true);
-            setIsPaused(false);
-          },
-          onBoundary: (charIndex, wordIndex) => {
-            setCurrentWordIndex(wordIndex);
-          },
-          onEnd: () => {
-            setIsPlaying(false);
-            setIsPaused(false);
-            setCurrentWordIndex(-1);
-            playChimeSound('success');
-          },
-        });
-      }, 150);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 antialiased selection:bg-amber-200 selection:text-amber-900">
-      {/* 1. Header with Tools & Switches */}
+      {/* 1. Header */}
       <Header
         fontSizeLevel={fontSizeLevel}
         onChangeFontSize={setFontSizeLevel}
         showSyllables={showSyllables}
         onToggleSyllables={() => setShowSyllables(!showSyllables)}
-        showKorean={showKorean}
-        onToggleKorean={() => setShowKorean(!showKorean)}
-        savedCount={savedWords.length}
-        onOpenSavedDrawer={() => setIsSavedDrawerOpen(true)}
-        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
-        onOpenGuide={() => setIsGuideOpen(true)}
       />
 
-      {/* 2. Main Body Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-8 space-y-6">
-        {/* Interactive Text Display & Synchronized Word Reader */}
+      {/* 2. Main Body Container (Direct English sentence input & Speed Controls only) */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 sm:py-8 space-y-6">
+        {/* Interactive Text Input & Direct Word Reader */}
         <InteractiveReader
           text={text}
           onTextChange={setText}
-          koreanTranslation={korean}
-          onKoreanChange={setKorean}
           isPlaying={isPlaying}
           currentWordIndex={currentWordIndex}
           fontSizeLevel={fontSizeLevel}
           showSyllables={showSyllables}
-          showKorean={showKorean}
           onSpeakSingleWord={handleSpeakSingleWord}
-          onSaveWord={handleSaveWord}
-          savedWords={savedWords}
         />
 
-        {/* TTS Speed and Playback Controls */}
+        {/* TTS Speed & Audio Playback Controls */}
         <TtsControls
           rate={rate}
           onRateChange={setRate}
-          pitch={pitch}
-          onPitchChange={setPitch}
-          volume={volume}
-          onVolumeChange={setVolume}
           selectedVoice={selectedVoice}
           onVoiceChange={setSelectedVoice}
           voices={voices}
@@ -293,72 +183,24 @@ export default function App() {
           onResume={handleResume}
           onStop={handleStop}
           onReplaySlow={handleReplaySlow}
-          onOpenPractice={() => setIsSpeakingPracticeOpen(true)}
           repeatCount={repeatCount}
           onChangeRepeatCount={setRepeatCount}
           currentRepeat={currentRepeat}
           hasText={!!text.trim()}
         />
-
-        {/* Curriculum Library Preset Sentences */}
-        <CurriculumLibrary
-          onSelectSentence={handleSelectSentence}
-          currentSentenceText={text}
-        />
       </main>
 
-      {/* 3. Footer */}
-      <footer className="bg-white border-t border-slate-200/80 py-5 text-center text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="flex items-center gap-1">
-            <span>초등학교 영어 수업 & 맞춤형 발음 학습 지원 웹앱</span>
-            <span className="text-amber-500 font-bold">✨</span>
+      {/* 3. Simple Clean Footer */}
+      <footer className="bg-white border-t border-slate-200/80 py-4 text-center text-xs text-slate-500">
+        <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
+          <p className="font-medium">
+            초등 영어 발음 & 속도 조절 TTS
           </p>
-          <div className="flex items-center gap-3 text-slate-400">
-            <span>Web Speech API & Google Gemini AI</span>
-            <span>&middot;</span>
-            <button
-              onClick={() => setIsGuideOpen(true)}
-              className="text-amber-700 hover:underline font-bold"
-            >
-              사용 도움말
-            </button>
-          </div>
+          <p className="text-slate-400">
+            직접 입력 &middot; 학습 속도 &middot; 발음 확인
+          </p>
         </div>
       </footer>
-
-      {/* Modals & Drawers */}
-      <SpeakingPracticeModal
-        isOpen={isSpeakingPracticeOpen}
-        onClose={() => setIsSpeakingPracticeOpen(false)}
-        targetSentence={text}
-        targetKorean={korean}
-        onPlayTarget={(customRate) => handlePlay(customRate)}
-      />
-
-      <AIAssistantModal
-        isOpen={isAIAssistantOpen}
-        onClose={() => setIsAIAssistantOpen(false)}
-        onApplySentence={handleSelectSentence}
-      />
-
-      <SavedWordsDrawer
-        isOpen={isSavedDrawerOpen}
-        onClose={() => setIsSavedDrawerOpen(false)}
-        savedWords={savedWords}
-        onRemoveWord={handleRemoveWord}
-        onSpeakWord={handleSpeakSingleWord}
-        onLoadIntoReader={(w, m) => {
-          handleStop();
-          setText(w);
-          setKorean(m);
-        }}
-      />
-
-      <GuideModal
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
-      />
     </div>
   );
 }

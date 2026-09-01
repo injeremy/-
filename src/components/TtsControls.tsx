@@ -5,24 +5,16 @@ import {
   Square,
   RotateCcw,
   Volume2,
-  Sliders,
-  Sparkles,
-  Mic,
   Repeat,
   Gauge,
-  Music2,
   ChevronDown
 } from 'lucide-react';
 import { SPEED_PRESETS } from '../data/curriculumData';
-import { SpeechVoiceInfo, SpeedPreset } from '../types';
+import { SpeechVoiceInfo } from '../types';
 
 interface TtsControlsProps {
   rate: number;
   onRateChange: (rate: number) => void;
-  pitch: number;
-  onPitchChange: (pitch: number) => void;
-  volume: number;
-  onVolumeChange: (volume: number) => void;
   selectedVoice: string;
   onVoiceChange: (voiceName: string) => void;
   voices: SpeechVoiceInfo[];
@@ -33,8 +25,7 @@ interface TtsControlsProps {
   onResume: () => void;
   onStop: () => void;
   onReplaySlow: () => void;
-  onOpenPractice: () => void;
-  repeatCount: number; // 1, 2, 3, 999 (infinite)
+  repeatCount: number;
   onChangeRepeatCount: (count: number) => void;
   currentRepeat: number;
   hasText: boolean;
@@ -43,10 +34,6 @@ interface TtsControlsProps {
 export const TtsControls: React.FC<TtsControlsProps> = ({
   rate,
   onRateChange,
-  pitch,
-  onPitchChange,
-  volume,
-  onVolumeChange,
   selectedVoice,
   onVoiceChange,
   voices,
@@ -57,79 +44,56 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
   onResume,
   onStop,
   onReplaySlow,
-  onOpenPractice,
   repeatCount,
   onChangeRepeatCount,
   currentRepeat,
   hasText,
 }) => {
-  const currentPreset = SPEED_PRESETS.find((p) => Math.abs(p.rate - rate) < 0.04);
-
   return (
     <div className="bg-white rounded-3xl p-4 sm:p-5 border border-amber-100 shadow-md shadow-amber-900/5 space-y-4">
-      {/* 1. Speed Preset Selection Bar */}
+      {/* 1. Only 2 Safe Educational Speeds (0.75x & 0.9x) - No Sliders, No fast speeds */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
             <Gauge className="w-4 h-4 text-amber-500" />
-            <span>읽기 속도 조절</span>
-            <span className="text-[11px] font-normal text-slate-500">
-              (현재: <strong className="text-amber-600 font-bold">{rate.toFixed(2)}x</strong>)
-            </span>
+            <span>읽기 속도</span>
           </label>
-          <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-medium border border-amber-200">
-            {currentPreset ? currentPreset.description : '사용자 지정 속도'}
-          </span>
         </div>
 
-        {/* Speed Buttons Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {SPEED_PRESETS.map((preset) => {
-            const isActive = Math.abs(preset.rate - rate) < 0.04;
+            const isActive = Math.abs(preset.rate - rate) < 0.08;
             return (
               <button
                 key={preset.id}
                 onClick={() => onRateChange(preset.rate)}
-                className={`py-2.5 px-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-200 border relative ${
+                className={`py-3 px-4 rounded-2xl flex items-center justify-center gap-3 transition-all duration-200 border relative cursor-pointer ${
                   isActive
                     ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/25 scale-[1.02]'
                     : 'bg-amber-50/50 hover:bg-amber-100/70 text-slate-700 border-amber-200/70 hover:border-amber-300'
                 }`}
               >
-                <span className="text-sm sm:text-base mb-0.5">{preset.badge.split(' ')[0]}</span>
-                <span className="text-xs font-extrabold">{preset.label.split(' ')[0]}</span>
-                <span className={`text-[11px] font-medium leading-tight ${isActive ? 'text-amber-100' : 'text-slate-500'}`}>
-                  {preset.badge.split(' ').slice(1).join(' ')}
-                </span>
+                <span className="text-xl sm:text-2xl">{preset.badge.split(' ')[0]}</span>
+                <div className="text-left">
+                  <div className="text-sm font-extrabold">{preset.label}</div>
+                  <div className={`text-xs font-medium leading-tight ${isActive ? 'text-amber-100' : 'text-slate-500'}`}>
+                    {preset.description}
+                  </div>
+                </div>
                 {isActive && (
-                  <span className="absolute -top-1.5 -right-1 flex h-3 w-3">
+                  <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-300"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-300"></span>
                   </span>
                 )}
               </button>
             );
           })}
         </div>
-
-        {/* Precise Slider Option */}
-        <div className="mt-3 pt-2 border-t border-slate-100 flex items-center gap-3">
-          <span className="text-xs text-slate-400 font-medium whitespace-nowrap">🐢 0.4x</span>
-          <input
-            type="range"
-            min="0.4"
-            max="2.0"
-            step="0.05"
-            value={rate}
-            onChange={(e) => onRateChange(parseFloat(e.target.value))}
-            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none"
-          />
-          <span className="text-xs text-slate-400 font-medium whitespace-nowrap">2.0x 🚀</span>
-        </div>
       </div>
 
-      {/* 2. Audio Customization (Voice, Pitch, Repeat) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">
+      {/* 2. Voice & Repeat Options Only */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
         {/* Voice Selector */}
         <div>
           <label className="font-bold text-slate-600 mb-1 flex items-center gap-1">
@@ -156,43 +120,6 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
           </div>
         </div>
 
-        {/* Pitch Control (Tone) */}
-        <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="font-bold text-slate-600 flex items-center gap-1">
-              <Music2 className="w-3.5 h-3.5 text-violet-500" />
-              <span>목소리 톤(높낮이)</span>
-            </label>
-            <span className="text-slate-400 font-semibold">{pitch < 1.0 ? '낮음' : pitch === 1.0 ? '보통' : '어린이 톤'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPitchChange(0.85)}
-              className={`flex-1 py-1.5 rounded-lg border text-center font-semibold transition-colors ${
-                pitch < 0.95 ? 'bg-violet-100 text-violet-800 border-violet-300' : 'bg-slate-50 border-slate-200 text-slate-600'
-              }`}
-            >
-              차분하게
-            </button>
-            <button
-              onClick={() => onPitchChange(1.0)}
-              className={`flex-1 py-1.5 rounded-lg border text-center font-semibold transition-colors ${
-                pitch >= 0.95 && pitch <= 1.05 ? 'bg-violet-100 text-violet-800 border-violet-300' : 'bg-slate-50 border-slate-200 text-slate-600'
-              }`}
-            >
-              표준
-            </button>
-            <button
-              onClick={() => onPitchChange(1.25)}
-              className={`flex-1 py-1.5 rounded-lg border text-center font-semibold transition-colors ${
-                pitch > 1.05 ? 'bg-violet-100 text-violet-800 border-violet-300' : 'bg-slate-50 border-slate-200 text-slate-600'
-              }`}
-            >
-              밝게
-            </button>
-          </div>
-        </div>
-
         {/* Repeat Count Loop */}
         <div>
           <div className="flex justify-between items-center mb-1">
@@ -202,7 +129,7 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
             </label>
             {isPlaying && repeatCount > 1 && (
               <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full font-bold">
-                {currentRepeat} / {repeatCount === 999 ? '∞' : repeatCount}회
+                {currentRepeat} / {repeatCount}회
               </span>
             )}
           </div>
@@ -211,12 +138,11 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
               { count: 1, label: '1회' },
               { count: 2, label: '2회' },
               { count: 3, label: '3회' },
-              { count: 999, label: '무한' },
             ].map((item) => (
               <button
                 key={item.count}
                 onClick={() => onChangeRepeatCount(item.count)}
-                className={`flex-1 py-1.5 rounded-lg border text-center font-semibold transition-colors ${
+                className={`flex-1 py-2 rounded-lg border text-center font-semibold transition-colors cursor-pointer ${
                   repeatCount === item.count
                     ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
                     : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
@@ -229,9 +155,8 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
         </div>
       </div>
 
-      {/* 3. Primary Playback Buttons (Big, friendly, prominent) */}
+      {/* 3. Primary Playback Buttons */}
       <div className="pt-2 flex flex-wrap items-center justify-between gap-2.5">
-        {/* Play/Pause & Stop Button Group */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
           {!isPlaying ? (
             <button
@@ -276,7 +201,7 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
             </button>
           )}
 
-          {/* Slow Replay Button (0.6x instant practice) */}
+          {/* Slow Replay Button */}
           <button
             onClick={onReplaySlow}
             disabled={!hasText}
@@ -285,26 +210,12 @@ export const TtsControls: React.FC<TtsControlsProps> = ({
                 ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200 cursor-pointer'
                 : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
             }`}
-            title="0.6x 아주 천천히 다시 듣기"
+            title="0.6x 천천히 다시 듣기"
           >
             <RotateCcw className="w-4 h-4" />
             <span>🐢 느리게 다시듣기</span>
           </button>
         </div>
-
-        {/* Practice Speaking (Shadowing) Challenge */}
-        <button
-          onClick={onOpenPractice}
-          disabled={!hasText}
-          className={`w-full sm:w-auto px-5 py-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border transition-all ${
-            hasText
-              ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 hover:from-sky-600 hover:to-blue-700 cursor-pointer'
-              : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-          }`}
-        >
-          <Mic className="w-4 h-4" />
-          <span>🎙️ 따라 말하기 (발음 채점)</span>
-        </button>
       </div>
     </div>
   );
